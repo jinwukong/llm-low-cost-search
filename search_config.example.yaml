@@ -1,0 +1,39 @@
+# Brave Search API Configuration
+# Get your API key from: https://brave.com/search/api/
+
+brave_search:
+  # IMPORTANT: Replace with your actual Brave Search API key
+  api_key: "YOUR_BRAVE_API_KEY_HERE"
+
+  # API base URL (typically doesn't need to be changed)
+  base_url: "https://api.search.brave.com/res/v1"
+
+  # Default search parameters
+  default_params:
+    count: 10           # Number of results per search
+    freshness: "pd"     # Freshness filter: pd (past day), pw (past week), pm (past month)
+    country: "US"       # Country code for localized results
+    search_lang: "en"   # Language for search results
+    safesearch: "off"   # SafeSearch: off, moderate, strict
+
+  # Rate limiting (Brave API has 1 request/second limit)
+  rate_limit:
+    requests_per_second: 0.9  # Set slightly below 1.0 for safety margin
+
+  # Archive settings
+  enable_archive: true
+  archive_path: "./archives"
+
+# Content extraction configuration
+content_extraction:
+  # Request timeout in seconds
+  timeout: 15
+
+  # Maximum text length to extract (characters)
+  max_text_length: 50000
+
+  # Maximum concurrent extraction requests
+  max_concurrent: 5
+
+  # User agent for web requests (some sites require this)
+  user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
