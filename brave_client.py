@@ -47,16 +47,6 @@ class BraveSearchClient:
         self.api_key = self.config.get_brave_api_key()
         self.base_url = brave_config.get('base_url', 'https://api.search.brave.com/res/v1')
 
-        self.endpoints = {}
-        endpoints_config = brave_config.get('endpoints', {})
-        for name, endpoint_data in endpoints_config.items():
-            if isinstance(endpoint_data, dict):
-                self.endpoints[name] = endpoint_data.get('path', f'{name}/search')
-            else:
-                self.endpoints[name] = endpoint_data
-
-        self.default_endpoints = brave_config.get('default_endpoints', ['web'])
-
         rate_limit_config = brave_config.get('rate_limit', {})
         requests_per_second = rate_limit_config.get('requests_per_second', 1.0)
         self.rate_limiter = RateLimiter(requests_per_second)
@@ -66,40 +56,12 @@ class BraveSearchClient:
         self.archive_manager = ArchiveManager(archive_path) if self.enable_archive else None
 
     async def search(self, query: str, **params) -> List[SearchResult]:
-        """Search using web endpoint"""
-        return await self._search_endpoint(query, 'web', params)
+        """Search using Brave API"""
+        return await self._search_endpoint(query, params)
 
-    async def search_news(self, query: str, **params) -> List[SearchResult]:
-        """Search news with freshness filter"""
-        news_query = query + ' news latest'
-        params['freshness'] = params.get('freshness', 'pd')
-        return await self._search_endpoint(news_query, 'web', params)
-    
-    async def search_multi(self, query: str, web_count: int = 10, news_count: int = 10) -> Dict[str, List[SearchResult]]:
-        """Search both web and news"""
-        tasks = [
-            self.search(query, count=web_count),
-            self.search_news(query, count=news_count)
-        ]
-
-        web_results, news_results = await asyncio.gather(*tasks, return_exceptions=True)
-
-        if isinstance(web_results, Exception):
-            logger.error(f'Web search failed: {web_results}')
-            web_results = []
-
-        if isinstance(news_results, Exception):
-            logger.error(f'News search failed: {news_results}')
-            news_results = []
-
-        return {
-            'web': web_results,
-            'news': news_results
-        }
-
-    async def _search_endpoint(self, query: str, endpoint_name: str, params: Optional[Dict] = None) -> List[SearchResult]:
+    async def _search_endpoint(self, query: str, params: Optional[Dict] = None) -> List[SearchResult]:
         """Execute search request"""
-        endpoint_path = self.endpoints.get(endpoint_name, 'web/search')
+        endpoint_path = 'web/search'
 
         await self.rate_limiter.wait_if_needed()
 
@@ -150,7 +112,7 @@ class BraveSearchClient:
 
         if self.enable_archive and self.archive_manager and results:
             try:
-                self.archive_manager.archive_search_results(query, results, endpoint_name)
+                self.archive_manager.archive_search_results(query, results, 'web')
             except Exception as e:
                 logger.error(f'Archive failed: {e}')
 

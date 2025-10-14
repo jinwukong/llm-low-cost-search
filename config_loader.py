@@ -8,22 +8,12 @@ logger = logging.getLogger(__name__)
 class SearchConfig:
     def __init__(self, config_path: Optional[str] = None):
         if config_path is None:
-            possible_paths = [
-                Path(__file__).parent / "search_config.yaml",
-                Path(__file__).parent.parent / "search" / "search_config.yaml",
-                Path.cwd() / "search_config.yaml",
-                Path.cwd() / "search" / "search_config.yaml",
-            ]
-
-            for path in possible_paths:
-                if path.exists():
-                    config_path = str(path)
-                    break
-
-            if config_path is None:
-                raise FileNotFoundError(f"search_config.yaml not found. Searched paths: {possible_paths}")
+            config_path = Path(__file__).parent / "search_config.yaml"
 
         self.config_path = Path(config_path)
+        if not self.config_path.exists():
+            raise FileNotFoundError(f"Configuration file not found: {self.config_path}")
+
         self.config = self._load_config()
 
     def _load_config(self) -> Dict[str, Any]:
@@ -49,18 +39,7 @@ class SearchConfig:
             )
 
         return api_key
-    
-    def get_search_params(self, profile: Optional[str] = None) -> Dict[str, Any]:
-        brave_config = self.get_brave_config()
-        params = brave_config.get("default_params", {}).copy()
-        
-        if profile:
-            profiles = brave_config.get("profiles", {})
-            if profile in profiles:
-                params.update(profiles[profile])
-        
-        return params
-    
+
     def get_rate_limit(self) -> float:
         return self.config.get("brave_search", {}).get("rate_limit", {}).get("requests_per_second", 1.0)
 

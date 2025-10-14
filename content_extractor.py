@@ -4,7 +4,7 @@ import asyncio
 from typing import Optional, List, Tuple
 from dataclasses import dataclass
 import logging
-from urllib.parse import urlparse
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -29,12 +29,6 @@ class ContentExtractor:
             self.Document = Document
         except ImportError:
             raise ImportError("Please install: pip install readability-lxml")
-
-        try:
-            from bs4 import BeautifulSoup
-            self.BeautifulSoup = BeautifulSoup
-        except ImportError:
-            self.BeautifulSoup = None
 
         if self.auto_archive:
             try:
@@ -76,15 +70,9 @@ class ContentExtractor:
             title = doc.title()
             summary_html = doc.summary()
 
-            if self.BeautifulSoup and summary_html:
-                soup = self.BeautifulSoup(summary_html, 'html.parser')
-                for script in soup(['script', 'style']):
-                    script.decompose()
-                text = soup.get_text(separator='\n', strip=True)
-            else:
-                import re
-                text = re.sub(r'<[^>]+>', ' ', summary_html)
-                text = re.sub(r'\s+', ' ', text).strip()
+            # Simple regex-based text extraction
+            text = re.sub(r'<[^>]+>', ' ', summary_html)
+            text = re.sub(r'\s+', ' ', text).strip()
 
             return title, text
 
