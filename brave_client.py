@@ -5,8 +5,8 @@ import time
 from typing import List, Dict, Optional, Any
 from dataclasses import dataclass
 import logging
-from config_loader import get_config
-from archive_manager import ArchiveManager
+from .config_loader import get_config
+from .archive_manager import ArchiveManager
 
 logger = logging.getLogger(__name__)
 
@@ -56,11 +56,7 @@ class BraveSearchClient:
         self.archive_manager = ArchiveManager(archive_path) if self.enable_archive else None
 
     async def search(self, query: str, **params) -> List[SearchResult]:
-        """Search using Brave API"""
-        return await self._search_endpoint(query, params)
-
-    async def _search_endpoint(self, query: str, params: Optional[Dict] = None) -> List[SearchResult]:
-        """Execute search request"""
+        """Search using Brave API (web/search endpoint)."""
         endpoint_path = 'web/search'
 
         await self.rate_limiter.wait_if_needed()
@@ -85,7 +81,7 @@ class BraveSearchClient:
                 response.raise_for_status()
                 data = await response.json()
 
-        results = []
+        results: List[SearchResult] = []
 
         web_results = data.get('web', {}).get('results', [])
         for item in web_results:

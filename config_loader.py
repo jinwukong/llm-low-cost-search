@@ -24,9 +24,6 @@ class SearchConfig:
     def get_brave_config(self) -> Dict[str, Any]:
         return self.config.get("brave_search", {})
 
-    def get_extraction_config(self) -> Dict[str, Any]:
-        return self.config.get("content_extraction", {})
-
     def get_brave_api_key(self) -> str:
         api_key = self.config.get("brave_search", {}).get("api_key", "")
 
@@ -40,8 +37,6 @@ class SearchConfig:
 
         return api_key
 
-    def get_rate_limit(self) -> float:
-        return self.config.get("brave_search", {}).get("rate_limit", {}).get("requests_per_second", 1.0)
 
 _global_config = None
 

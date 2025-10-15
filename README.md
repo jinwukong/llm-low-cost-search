@@ -1,161 +1,119 @@
 # Brave Search Extractor
 
-基于 Brave Search API 和 Mozilla Readability 的高效搜索与内容提取系统。
+Small, async-friendly toolkit to query the Brave Search API and extract readable article text using Mozilla Readability — with optional auto‑archiving of results to JSON files.
 
-## ⚠️ 安全警告
+This README reflects the current implementation in the repository and is safe to publish publicly (no secrets included). Replace the API key locally before running.
 
-**重要**: 在开源或共享此项目前，请确保：
+## Features
 
-1. **永远不要提交真实的 API 密钥到版本控制**
-2. **检查并清理所有存档数据（archives/目录）**
-3. **确保 search_config.yaml 不包含敏感信息**
+- Async Brave Search client (`aiohttp`)
+- Simple rate limiting (requests/second)
+- Readability‑based content extraction (`readability-lxml` + `lxml`)
+- Batch extraction with bounded concurrency
+- Optional auto‑archiving to `archives/` (daily search logs and extracted content files)
 
-## 核心特性
+## Project Layout
 
-- Brave Search API - 高质量搜索结果
-- Readability 提取 - Mozilla 阅读模式算法
-- 智能 Headers - 最小必需配置绕过反爬
-- 并发处理 - 批量异步提取
-- 自动存档 - 搜索历史和结果保存
-- 去重机制 - URL 数据库避免重复
+```
+search/
+├── brave_client.py         # Brave Search API client
+├── content_extractor.py    # Readability-based content extractor
+├── archive_manager.py      # JSON archive writer
+├── config_loader.py        # Configuration loader
+├── demo.py                 # End-to-end demo script
+├── search_config.yaml      # Local config (ignored by Git)
+└── archives/               # Auto-generated archives directory
+```
 
-## 文件结构
+Note: There is no `multi_search.py` in this repo. The README is accurate to the code.
 
-    search/
-    ├── brave_client.py         # Brave 搜索客户端
-    ├── content_extractor.py    # Readability 内容提取器
-    ├── archive_manager.py      # 存档管理器
-    ├── config_loader.py        # 配置加载器
-    ├── multi_search.py         # 多端点搜索支持
-    ├── search_config.yaml      # 配置文件（含 API 密钥）
-    └── archives/               # 自动生成的存档目录
+## Requirements
 
-## 安装
+- Python 3.9+ (tested on 3.9.6 and newer)
+- Install dependencies:
 
-### 1. 安装依赖
-
-```bash
+```
 pip install -r requirements.txt
-# 或手动安装
-pip install aiohttp readability-lxml beautifulsoup4 pyyaml
 ```
 
-### 2. 配置 API 密钥
+## Configuration
 
-从 [Brave Search API](https://brave.com/search/api/) 获取 API 密钥。
+Copy the example config and set your Brave API key (do not commit the real key):
 
-```bash
-# 1. 复制示例配置
+```
 cp search_config.example.yaml search_config.yaml
-
-# 2. 编辑 search_config.yaml，替换 YOUR_BRAVE_API_KEY_HERE
-# 例如：api_key: "BSAWAjayKZ8-4raNIPYo8g1GGYiAm43"
+# Edit search_config.yaml and set brave_search.api_key
 ```
 
-## 快速开始
+Used configuration keys (from `search_config.yaml`):
 
-### 1. 基础用法
+- `brave_search.api_key` (required)
+- `brave_search.base_url` (optional, default: `https://api.search.brave.com/res/v1`)
+- `brave_search.rate_limit.requests_per_second` (optional, default: `1.0`)
+- `brave_search.enable_archive` (default: `true`)
+- `brave_search.archive_path` (default: `./archives`)
 
-    import asyncio
-    from search.brave_client import BraveSearchClient
-    from search.content_extractor import ContentExtractor
+## Quick Start
 
-    # 搜索
+Example usage (Python):
+
+```python
+import asyncio
+from search.brave_client import BraveSearchClient
+from search.content_extractor import ContentExtractor
+
+async def main():
     client = BraveSearchClient()
-    results = asyncio.run(client.search("Bitcoin news", count=10))
+    results = await client.search("Bitcoin news", count=10)
 
-    # 提取内容
     extractor = ContentExtractor()
-    content = asyncio.run(extractor.extract(results[0].url))
+    content = await extractor.extract(results[0].url)
+    print(content.title)
+    print(content.text[:400])
 
-### 2. 批量提取
+asyncio.run(main())
+```
 
-    # 批量提取多个 URL
-    urls = [r.url for r in results[:5]]
-    contents = asyncio.run(extractor.extract_batch(urls))
-    
-    # 查看成功率
-    success = sum(1 for c in contents if c.success)
-    print(f"成功率: {success}/{len(contents)}")
+Run the demo (single way):
 
-## 搜索参数
+- From the repo root: `python run_demo.py "bitcoin whale"`
 
-    results = await client.search(
-        query="cryptocurrency",
-        count=20,              # 返回结果数
-        freshness="pd",        # 时间范围: pd(24h), pw(周), pm(月)
-        country="US",          # 国家代码
-        search_lang="en"       # 搜索语言
-    )
+## Archiving
 
-## 存档机制
+If `enable_archive` is `true`, the code writes:
 
-所有搜索自动存档在 archives/ 目录：
+- Daily search logs: `archives/daily/YYYY-MM-DD_searches.json`
+- Extraction batch index: `archives/extracted/YYYY-MM-DD_extractions.json`
+- Individual extracted articles: `archives/extracted/YYYY-MM-DD_HH-MM-SS_<hash>.json`
 
-- search_index.json - 搜索历史索引
-- url_database.json - URL 去重数据库
-- daily/YYYY-MM-DD_searches.json - 每日详细记录
+Directories are created automatically. Files in `archives/` are ignored by Git.
 
-查看存档：
+## Troubleshooting
 
-    import json
-    with open('search/archives/search_index.json') as f:
-        index = json.load(f)
-        print(f"总搜索次数: {index['total_searches']}")
+- Missing config: `Configuration file not found: search_config.yaml` → Copy the example and set your key.
+- API key error: `Brave API key not configured!` → Edit `search_config.yaml` and replace the placeholder.
+- ModuleNotFoundError: `No module named 'search'` → Run `python run_demo.py ...` from the repository root.
+- HTTP errors (403/429/etc.): Sites may block scraping; Brave API enforces rate limits (≈1 req/s).
+- Timeouts on extraction: Adjust `ContentExtractor(timeout=...)` or try again later.
 
-## 技术细节
+Logging tip for your own scripts:
 
-### Headers 配置
+```python
+import logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+```
 
-使用最小必需 Headers 绕过反爬：
+## Security
 
-    headers = {
-        'User-Agent': 'Mozilla/5.0...',
-        'Accept-Language': 'en-US,en;q=0.9'
-    }
+- Never commit real API keys. `search_config.yaml` is Git‑ignored in this repo.
+- Review any generated data under `archives/` before sharing.
 
-### 性能指标
+## License
 
-- 搜索速度: ~1 秒
-- 提取速度: 20-50ms/页
-- 成功率: 70-80%
-- 并发能力: 100+ QPS
+MIT — see `LICENSE`.
 
-## 常见问题
+## Roadmap (nice to have)
 
-1. **403 错误** - 某些网站有反爬保护，属正常现象
-2. **提取为空** - 网站可能使用 JavaScript 渲染
-3. **速率限制** - Brave API 限制 1 请求/秒
-4. **Reuters 失败** - 确保 Accept-Language header 存在
-
-## 贡献指南
-
-欢迎贡献代码！请遵循以下步骤：
-
-1. Fork 本仓库
-2. 创建您的特性分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交您的更改 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 开启一个 Pull Request
-
-### 开发规范
-
-- 使用 Python 3.10+ 特性
-- 遵循 PEP 8 代码风格
-- 添加适当的类型注解
-- 为新功能编写文档
-- 确保不提交敏感信息
-
-## 许可证
-
-本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情。
-
-## 作者
-
-- 您的名字 - [GitHub](https://github.com/yourusername)
-
-## 致谢
-
-- [Brave Search](https://brave.com/search/api/) - 提供搜索 API
-- [Mozilla Readability](https://github.com/mozilla/readability) - 内容提取算法
-- [aiohttp](https://github.com/aio-libs/aiohttp) - 异步 HTTP 客户端
+- Honor `default_params` from config automatically
+- Global search/extraction indexes and URL de‑duplication
+- Additional search endpoints and richer result fields

@@ -32,7 +32,7 @@ class ContentExtractor:
 
         if self.auto_archive:
             try:
-                from archive_manager import ArchiveManager
+                from .archive_manager import ArchiveManager
                 self.archive_manager = ArchiveManager()
             except ImportError:
                 logger.warning("Archive manager not available, auto-archive disabled")

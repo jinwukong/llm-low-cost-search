@@ -63,9 +63,7 @@ class ArchiveManager:
         with open(daily_file, 'w', encoding='utf-8') as f:
             json.dump(daily_data, f, ensure_ascii=False, indent=2)
 
-        logger.info(f"Archived {len(results)} search results to {daily_file.name}")
-        print(f"📁 存档完成: {daily_file}")
-        print(f"   - 保存了 {len(results)} 个URL")
+        logger.info("Archived %d search results to %s", len(results), daily_file.name)
 
         return daily_file
 
@@ -136,11 +134,11 @@ class ArchiveManager:
         success_count = len(batch_record['successful'])
         failed_count = len(batch_record['failed'])
 
-        print(f"📄 提取存档完成: {daily_file.name}")
-        print(f"   - 成功: {success_count}, 失败: {failed_count}")
-        if success_count > 0:
-            print(f"   - 全文保存在: extracted/ 目录")
-
-        logger.info(f"Archived extraction batch: {success_count} successful, {failed_count} failed")
+        logger.info(
+            "Archived extraction batch: %d successful, %d failed (file=%s)",
+            success_count,
+            failed_count,
+            daily_file.name,
+        )
 
         return daily_file

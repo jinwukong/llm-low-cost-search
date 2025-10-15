@@ -3,16 +3,17 @@
 import asyncio
 import sys
 from datetime import datetime
-from brave_client import BraveSearchClient
-from content_extractor import ContentExtractor
+import logging
+from .brave_client import BraveSearchClient
+from .content_extractor import ContentExtractor
 
 DEMO_KEYWORD = "bitcoin whale"
 EXTRACT_TOP_N = 10
 
 async def demo_search(keyword):
     """Demo search and extraction workflow"""
-    print(f"\nSearching for: '{keyword}'")
-    print("-" * 50)
+    logger = logging.getLogger("demo")
+    logger.info("Searching for: %r", keyword)
 
     # Initialize clients
     client = BraveSearchClient()
@@ -23,20 +24,21 @@ async def demo_search(keyword):
         search_start = datetime.now()
         results = await client.search(keyword)
         search_time = (datetime.now() - search_start).total_seconds()
-        print(f"Found {len(results)} results in {search_time:.2f}s")
+        logger.info("Found %d results in %.2fs", len(results), search_time)
     except Exception as e:
-        print(f"Search failed: {e}")
+        logging.exception("Search failed: %s", e)
         return
 
     # Display results
-    print(f"\nTop results:")
-    for i, r in enumerate(results[:5], 1):
-        print(f"{i}. {r.title[:60]}")
-        print(f"   {r.url[:70]}")
+    if results:
+        logger.info("Top results:")
+        for i, r in enumerate(results[:5], 1):
+            logger.info("%d. %s", i, r.title[:60])
+            logger.info("   %s", r.url[:70])
 
     # Extract content
     if results:
-        print(f"\nExtracting content from top {EXTRACT_TOP_N} URLs...")
+        logger.info("Extracting content from top %d URLs...", EXTRACT_TOP_N)
         urls = [r.url for r in results[:EXTRACT_TOP_N]]
 
         try:
@@ -47,13 +49,23 @@ async def demo_search(keyword):
             success_count = sum(1 for c in contents if c.success)
             total_chars = sum(len(c.text) for c in contents if c.success and c.text)
 
-            print(f"Extracted {success_count}/{len(contents)} successfully in {extract_time:.2f}s")
+            logger.info(
+                "Extracted %d/%d successfully in %.2fs",
+                success_count,
+                len(contents),
+                extract_time,
+            )
             if total_chars > 0:
-                print(f"Total: {total_chars:,} characters ({total_chars/extract_time:.0f} chars/s)")
+                rate = total_chars / extract_time if extract_time > 0 else 0
+                logger.info(
+                    "Total: %s characters (%.0f chars/s)",
+                    f"{total_chars:,}",
+                    rate,
+                )
         except Exception as e:
-            print(f"Extraction failed: {e}")
+            logging.exception("Extraction failed: %s", e)
 
-    print("\nData saved to archives/ directory")
+    logger.info("Data saved to archives/ directory")
 
 async def main():
     """Main function"""
@@ -61,4 +73,8 @@ async def main():
     await demo_search(keyword)
 
 if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    )
     asyncio.run(main())
